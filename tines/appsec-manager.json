@@ -1,0 +1,1725 @@
+{
+  "schema_version": 24,
+  "standard_lib_version": 63,
+  "action_runtime_version": 15,
+  "name": "AppSec Manager",
+  "description": null,
+  "guid": "51c55e70e61d945068ce5b0509f3826b",
+  "slug": "appsec_manager_test0",
+  "agents": [
+    {
+      "type": "Agents::WebhookAgent",
+      "name": "Receive SonarCloud Events",
+      "disabled": false,
+      "description": null,
+      "guid": "c3ac923c97d08ccab96c3e5dd149a12c",
+      "origin_story_identifier": "cloud:98bf19cf1391e1805daf0cbdc3239e4a:f707c10fdc774774d84bd3e83c742d84",
+      "options": {
+        "path": "2a4f240b47f5b5f7cbc596b6cfbf00d9",
+        "secret": "44cc415f13caa8f7b0b1a3815f0f3a39",
+        "verbs": "get,post"
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null
+    },
+    {
+      "type": "Agents::TriggerAgent",
+      "name": "Successful Analysis",
+      "disabled": false,
+      "description": null,
+      "guid": "54e3d40625fd89499627a7cce0a63e85",
+      "origin_story_identifier": "cloud:98bf19cf1391e1805daf0cbdc3239e4a:f707c10fdc774774d84bd3e83c742d84",
+      "options": {
+        "rules": [
+          {
+            "type": "field==value",
+            "value": "SUCCESS",
+            "path": "<<receive_sonarcloud_events.body.status>>"
+          }
+        ]
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null
+    },
+    {
+      "type": "Agents::HTTPRequestAgent",
+      "name": "Get Project Issues",
+      "disabled": false,
+      "description": "",
+      "guid": "861d9ef50de653f8005a319b53954d46",
+      "origin_story_identifier": "cloud:98bf19cf1391e1805daf0cbdc3239e4a:f707c10fdc774774d84bd3e83c742d84",
+      "options": {
+        "url": "https://sonarcloud.io/api/issues/search",
+        "method": "get",
+        "payload": {
+          "projects": "<<parse_source.project_key>>"
+        },
+        "headers": {
+          "Authorization": "Bearer <<CREDENTIAL.sonarcloud_token>>"
+        }
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::HTTPRequestAgent",
+      "name": "Upsert Issues Record",
+      "disabled": false,
+      "description": "Created from cURL command",
+      "guid": "7523d2b540be8caf14af0624c3ad61a4",
+      "origin_story_identifier": "cloud:98bf19cf1391e1805daf0cbdc3239e4a:f707c10fdc774774d84bd3e83c742d84",
+      "options": {
+        "url": "https://api.airtable.com/v0/appITfcTFAaOZoRA8/tblzfZZYpjeAD7eps",
+        "method": "patch",
+        "content_type": "application_json",
+        "payload": {
+          "performUpsert": {
+            "fieldsToMergeOn": [
+              "Issue Key"
+            ]
+          },
+          "records": [
+            {
+              "fields": {
+                "Issue Key": "=explode_issues.issue.key",
+                "Project Name": "=parse_source.project_name",
+                "Message": "=explode_issues.issue.message",
+                "Type": "=explode_issues.issue.type",
+                "Severity": "=explode_issues.issue.severity",
+                "Status": "=explode_issues.issue.status",
+                "Resolution": "=explode_issues.issue.resolution",
+                "Effort (Minutes)": "=explode_issues.issue.effort |> REMOVE(%, \"min\") |> NUMBER(%)",
+                "Created": "=explode_issues.issue.creationDate |> DATE(%, \"%Y-%m-%d\")",
+                "Updated": "=explode_issues.issue.updateDate |> DATE(%, \"%Y-%m-%d\")"
+              }
+            }
+          ]
+        },
+        "headers": {
+          "Authorization": "Bearer <<CREDENTIAL.airtable_appsec_token>>"
+        }
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::EventTransformationAgent",
+      "name": "Explode Issues",
+      "disabled": false,
+      "description": null,
+      "guid": "c30150b04bf695173adcf4672898f28c",
+      "origin_story_identifier": "cloud:98bf19cf1391e1805daf0cbdc3239e4a:f707c10fdc774774d84bd3e83c742d84",
+      "options": {
+        "mode": "explode",
+        "path": "=get_project_issues.body.issues",
+        "to": "issue",
+        "limit": "500"
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::HTTPRequestAgent",
+      "name": "Get Project Measures",
+      "disabled": false,
+      "description": "Created from cURL command",
+      "guid": "a0c2ee27802ecfc2fb9edae2d52bd571",
+      "origin_story_identifier": "cloud:98bf19cf1391e1805daf0cbdc3239e4a:f707c10fdc774774d84bd3e83c742d84",
+      "options": {
+        "url": "https://sonarcloud.io/api/measures/component",
+        "method": "get",
+        "payload": {
+          "component": "<<parse_source.project_key>>",
+          "metricKeys": "alert_status,ncloc,ncloc_language_distribution,projects,new_lines,new_accepted_issues,new_bugs,new_reliability_rating,new_vulnerabilities,new_security_rating,new_security_hotspots,new_security_review_rating,new_security_hotspots_reviewed,new_code_smells,new_maintainability_rating,new_technical_debt,new_coverage,new_lines_to_cover,new_duplicated_lines_density,new_lines,coverage,duplicated_lines_density,new_violations,accepted_issues,bugs,reliability_rating,vulnerabilities,security_rating,security_hotspots,security_review_rating,security_hotspots_reviewed,code_smells,sqale_rating,coverage,lines_to_cover,duplicated_lines_density,lines,violations,maintainability_issues,security_issues,reliability_issues",
+          "additionalFields": "metrics"
+        },
+        "headers": {
+          "Authorization": "Bearer <<CREDENTIAL.sonarcloud_token>>"
+        }
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::HTTPRequestAgent",
+      "name": "Upsert Project Metrics Record",
+      "disabled": false,
+      "description": "Created from cURL command",
+      "guid": "0eddd229ceff4bd81597bc9c41585a6c",
+      "origin_story_identifier": "cloud:98bf19cf1391e1805daf0cbdc3239e4a:f707c10fdc774774d84bd3e83c742d84",
+      "options": {
+        "url": "https://api.airtable.com/v0/appITfcTFAaOZoRA8/tblq8PmveQUxnXSGL/",
+        "method": "patch",
+        "content_type": "application_json",
+        "payload": {
+          "performUpsert": {
+            "fieldsToMergeOn": [
+              "Project Name"
+            ]
+          },
+          "records": [
+            {
+              "fields": {
+                "Project Name": "=parse_source.project_name",
+                "Bugs": "=get_project_measures.body.component.measures |> WHERE(%, \"metric\", \"bugs\")[0].value |> NUMBER(%)",
+                "Vulnerabilities": "=get_project_measures.body.component.measures |> WHERE(%, \"metric\", \"vulnerabilities\")[0].value |> NUMBER(%)",
+                "Code Smells": "=get_project_measures.body.component.measures |> WHERE(%, \"metric\", \"code_smells\")[0].value |> NUMBER(%)",
+                "Duplications (%)": "=get_project_measures.body.component.measures |> WHERE(%, \"metric\", \"duplicated_lines_density\")[0].value |> NUMBER(%)",
+                "Reliability Rating": "=get_project_measures.body.component.measures |> WHERE(%, \"metric\", \"reliability_rating\")[0].value |> LOCAL.rating_map[%]",
+                "Security Rating": "=get_project_measures.body.component.measures |> WHERE(%, \"metric\", \"security_rating\")[0].value |> LOCAL.rating_map[%]",
+                "Maintainability Rating": "=get_project_measures.body.component.measures |> WHERE(%, \"metric\", \"sqale_rating\")[0].value |> LOCAL.rating_map[%]",
+                "Maintainability Debt (Days)": "=get_project_measures.body.component.measures |> WHERE(%, \"metric\", \"new_maintainability_rating\")[0].periods[0].value |> NUMBER(%)",
+                "Last Analyzed": "=parse_source.last_analyzed |> DATE(%, \"%Y-%m-%d\")"
+              }
+            }
+          ]
+        },
+        "headers": {
+          "Authorization": "Bearer <<CREDENTIAL.airtable_appsec_token>>"
+        },
+        "local": {
+          "rating_map": {
+            "1.0": "A",
+            "2.0": "B",
+            "3.0": "C",
+            "4.0": "D",
+            "5.0": "E"
+          }
+        }
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::HTTPRequestAgent",
+      "name": "Get Last Snapshot",
+      "disabled": false,
+      "description": "",
+      "guid": "cc81a3b5808817420b3fc75d2683d92d",
+      "origin_story_identifier": "cloud:98bf19cf1391e1805daf0cbdc3239e4a:f707c10fdc774774d84bd3e83c742d84",
+      "options": {
+        "url": "https://api.airtable.com/v0/appITfcTFAaOZoRA8/tblSLfj186ZXFc4Sb/",
+        "method": "get",
+        "content_type": "application_json",
+        "payload": {
+          "filterByFormula": "{Snapshot Key} = '<<parse_source.project_name>>-<<LOCAL.last_snapshot_date>>'"
+        },
+        "headers": {
+          "Authorization": "Bearer <<CREDENTIAL.airtable_appsec_token>>"
+        },
+        "local": {
+          "last_snapshot_date": "<<UNIX_TIMESTAMP() - 86400 |> DATE(%, \"%Y-%m-%d\")>>"
+        }
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::HTTPRequestAgent",
+      "name": "Upsert Trends Record",
+      "disabled": false,
+      "description": "Created from cURL command",
+      "guid": "8b70b0d88995adfb9ab81a285bc8abde",
+      "origin_story_identifier": "cloud:98bf19cf1391e1805daf0cbdc3239e4a:f707c10fdc774774d84bd3e83c742d84",
+      "options": {
+        "url": "https://api.airtable.com/v0/appITfcTFAaOZoRA8/tblSLfj186ZXFc4Sb/",
+        "method": "patch",
+        "content_type": "application_json",
+        "payload": {
+          "performUpsert": {
+            "fieldsToMergeOn": [
+              "Snapshot Key"
+            ]
+          },
+          "records": [
+            {
+              "fields": {
+                "Snapshot Key": "=parse_source.project_name & \"-\" & TODAY()",
+                "Project Name": "=parse_source.project_name",
+                "Snapshot Date": "=TODAY()",
+                "Bugs": "=get_project_measures.body.component.measures |> WHERE(%, \"metric\", \"bugs\")[0].value |> NUMBER(%)",
+                "Vulnerabilities": "=get_project_measures.body.component.measures |> WHERE(%, \"metric\", \"vulnerabilities\")[0].value |> NUMBER(%)",
+                "Code Smells": "=get_project_measures.body.component.measures |> WHERE(%, \"metric\", \"code_smells\")[0].value |> NUMBER(%)",
+                "Duplications (%)": "=get_project_measures.body.component.measures |> WHERE(%, \"metric\", \"duplicated_lines_density\")[0].value |> NUMBER(%)",
+                "Reliability Rating": "=get_project_measures.body.component.measures |> WHERE(%, \"metric\", \"reliability_rating\")[0].value |> LOCAL.rating_map[%]",
+                "Security Rating": "=get_project_measures.body.component.measures |> WHERE(%, \"metric\", \"security_rating\")[0].value |> LOCAL.rating_map[%]",
+                "Maintainability Rating": "=get_project_measures.body.component.measures |> WHERE(%, \"metric\", \"sqale_rating\")[0].value |> LOCAL.rating_map[%]"
+              }
+            }
+          ]
+        },
+        "headers": {
+          "Authorization": "Bearer <<CREDENTIAL.airtable_appsec_token>>"
+        },
+        "local": {
+          "rating_map": {
+            "1.0": "A",
+            "2.0": "B",
+            "3.0": "C",
+            "4.0": "D",
+            "5.0": "E"
+          }
+        }
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::TriggerAgent",
+      "name": "Snapshot Found",
+      "disabled": false,
+      "description": null,
+      "guid": "341e5be80faf1548f494aad672c7c969",
+      "origin_story_identifier": "cloud:98bf19cf1391e1805daf0cbdc3239e4a:f707c10fdc774774d84bd3e83c742d84",
+      "options": {
+        "rules": [
+          {
+            "path": "=get_last_snapshot.body.records |> IS_PRESENT(%)",
+            "type": "formula"
+          }
+        ]
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null
+    },
+    {
+      "type": "Agents::HTTPRequestAgent",
+      "name": "Update Deltas",
+      "disabled": false,
+      "description": "",
+      "guid": "c315bb9a1ddce1f3dc4ae17f55da142d",
+      "origin_story_identifier": "cloud:98bf19cf1391e1805daf0cbdc3239e4a:f707c10fdc774774d84bd3e83c742d84",
+      "options": {
+        "url": "https://api.airtable.com/v0/appITfcTFAaOZoRA8/tblSLfj186ZXFc4Sb/<<upsert_trends_record.body.records[0].id>>",
+        "method": "patch",
+        "content_type": "application_json",
+        "payload": {
+          "fields": {
+            "Bugs (Delta)": "=upsert_trends_record.body.records[0].fields.Bugs - get_last_snapshot.body.records[0].fields.Bugs",
+            "Vulnerabilities (Delta)": "=upsert_trends_record.body.records[0].fields.Vulnerabilities - get_last_snapshot.body.records[0].fields.Vulnerabilities",
+            "Code Smells (Delta)": "=upsert_trends_record.body.records[0].fields[\"Code Smells\"] - get_last_snapshot.body.records[0].fields[\"Code Smells\"]"
+          }
+        },
+        "headers": {
+          "Authorization": "Bearer <<CREDENTIAL.airtable_appsec_token>>"
+        }
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::HTTPRequestAgent",
+      "name": "List Hotspots",
+      "disabled": false,
+      "description": "",
+      "guid": "01ac066cbc460835143e3f397764b9ba",
+      "origin_story_identifier": "cloud:98bf19cf1391e1805daf0cbdc3239e4a:f707c10fdc774774d84bd3e83c742d84",
+      "options": {
+        "url": "https://sonarcloud.io/api/hotspots/search",
+        "method": "get",
+        "payload": {
+          "projectKey": "<<parse_source.project_key>>"
+        },
+        "headers": {
+          "Authorization": "Bearer <<CREDENTIAL.sonarcloud_token>>"
+        }
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::HTTPRequestAgent",
+      "name": "Upsert Insights Record",
+      "disabled": false,
+      "description": "Created from cURL command",
+      "guid": "68b832c0777a1c1c38c94d419cc1f4d4",
+      "origin_story_identifier": "cloud:98bf19cf1391e1805daf0cbdc3239e4a:f707c10fdc774774d84bd3e83c742d84",
+      "options": {
+        "url": "https://api.airtable.com/v0/appITfcTFAaOZoRA8/tblrNoELV00kaujjI/",
+        "method": "patch",
+        "content_type": "application_json",
+        "payload": {
+          "performUpsert": {
+            "fieldsToMergeOn": [
+              "Hotspot Key"
+            ]
+          },
+          "records": [
+            {
+              "fields": {
+                "Hotspot Key": "=explode_hotspots.hotspot.key",
+                "Project Name": "=parse_source.project_name",
+                "Message": "=explode_hotspots.hotspot.message",
+                "Category": "=explode_hotspots.hotspot.securityCategory",
+                "Vulnerability Probability": "=explode_hotspots.hotspot.vulnerabilityProbability",
+                "Status": "=explode_hotspots.hotspot.status",
+                "Resolution": "=explode_hotspots.hotspot.resolution",
+                "Component": "=explode_hotspots.hotspot.component",
+                "Created": "=explode_hotspots.hotspot.creationDate |> DATE(%, \"%Y-%m-%d\")",
+                "Updated": "=explode_hotspots.hotspot.updateDate |> DATE(%, \"%Y-%m-%d\")",
+                "Author": "=explode_hotspots.hotspot.author"
+              }
+            }
+          ]
+        },
+        "headers": {
+          "Authorization": "Bearer <<CREDENTIAL.airtable_appsec_token>>"
+        }
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::EventTransformationAgent",
+      "name": "Explode Hotspots",
+      "disabled": false,
+      "description": null,
+      "guid": "75f99501407195f98d8b9f4d857979cb",
+      "origin_story_identifier": "cloud:98bf19cf1391e1805daf0cbdc3239e4a:f707c10fdc774774d84bd3e83c742d84",
+      "options": {
+        "mode": "explode",
+        "path": "=list_hotspots.body.hotspots",
+        "to": "hotspot",
+        "limit": "500"
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::HTTPRequestAgent",
+      "name": "Upsert Project Metrics Record",
+      "disabled": false,
+      "description": "Created from cURL command",
+      "guid": "c3cea0afb4bd042d402e7ad506df0d22",
+      "origin_story_identifier": "cloud:98bf19cf1391e1805daf0cbdc3239e4a:f707c10fdc774774d84bd3e83c742d84",
+      "options": {
+        "url": "https://api.airtable.com/v0/appITfcTFAaOZoRA8/tblq8PmveQUxnXSGL/",
+        "method": "patch",
+        "content_type": "application_json",
+        "payload": {
+          "performUpsert": {
+            "fieldsToMergeOn": [
+              "Project Name"
+            ]
+          },
+          "records": [
+            {
+              "fields": {
+                "Project Name": "=parse_source.project_name",
+                "Total Security Hotspots": "=list_hotspots.body.paging.total",
+                "Security Hotspots Reviewed (%)": "=list_hotspots.body.hotspots |> \nWHERE(%, \"status\", \"REVIEWED\") |> \nIF(list_hotspots.body.paging.total > 0,\n  SIZE(%) / list_hotspots.body.paging.total * 100,\n  100.0)\n",
+                "Action Required": "=list_hotspots.body.hotspots |> \nWHERE(%, \"vulnerabilityProbability\", \"CRITICAL\") |> IS_PRESENT(%)"
+              }
+            }
+          ]
+        },
+        "headers": {
+          "Authorization": "Bearer <<CREDENTIAL.airtable_appsec_token>>"
+        }
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::HTTPRequestAgent",
+      "name": "Get Github Repos",
+      "disabled": false,
+      "description": null,
+      "guid": "01ce08d690b1a34582a2f320c5b07729",
+      "origin_story_identifier": "cloud:98bf19cf1391e1805daf0cbdc3239e4a:f707c10fdc774774d84bd3e83c742d84",
+      "options": {
+        "url": "https://api.github.com/users/<<RESOURCE.github_owner>>/repos",
+        "method": "get"
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::HTTPRequestAgent",
+      "name": "List Projects",
+      "disabled": false,
+      "description": "",
+      "guid": "e413508cc650b6de5336f84788723a3a",
+      "origin_story_identifier": "cloud:98bf19cf1391e1805daf0cbdc3239e4a:f707c10fdc774774d84bd3e83c742d84",
+      "options": {
+        "url": "https://sonarcloud.io/api/projects/search",
+        "method": "get",
+        "payload": {
+          "organization": "<<RESOURCE.sonarcloud_org>>"
+        },
+        "headers": {
+          "Authorization": "Bearer <<CREDENTIAL.sonarcloud_token>>"
+        }
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::EventTransformationAgent",
+      "name": "Compare Lists",
+      "disabled": false,
+      "description": null,
+      "guid": "81aeb50a857bc5f270165fd1dcd446e4",
+      "origin_story_identifier": "cloud:98bf19cf1391e1805daf0cbdc3239e4a:f707c10fdc774774d84bd3e83c742d84",
+      "options": {
+        "mode": "message_only",
+        "loop": false,
+        "payload": {
+          "remaining_repos": "=LOCAL.difference"
+        },
+        "local": {
+          "github_repos": "=get_github_repos.body |> MAP(%, \"name\")",
+          "projects": "=list_projects.body.components |>\nMAP_LAMBDA(%,\n  LAMBDA(proj,\n    REMOVE(proj.key, RESOURCE.sonarcloud_org & \"_\")\n    )\n  )",
+          "difference": "=LOCAL.github_repos |>\nDIFFERENCE(%, LOCAL.projects)"
+        }
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::EventTransformationAgent",
+      "name": "Schedule Onboarding",
+      "disabled": false,
+      "description": null,
+      "guid": "e56b1bc6f91148a76724e80cf8c94fda",
+      "origin_story_identifier": "cloud:98bf19cf1391e1805daf0cbdc3239e4a:f707c10fdc774774d84bd3e83c742d84",
+      "options": {
+        "mode": "message_only",
+        "loop": "=implode_repo_ids",
+        "payload": {
+          "project": "=LOOP.value.project",
+          "onboarding_date": "=(LOOP.index + 1) |>\n% * 86400 |>\n% + UNIX_TIMESTAMP() |> \nDATE(%, \"%Y-%m-%d\")",
+          "repo_id": "=LOOP.value.repo_id"
+        }
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::EventTransformationAgent",
+      "name": "Throttle 1/s",
+      "disabled": false,
+      "description": null,
+      "guid": "770b74d30f6ed6eb599c9e996dd7c598",
+      "origin_story_identifier": "cloud:98bf19cf1391e1805daf0cbdc3239e4a:f707c10fdc774774d84bd3e83c742d84",
+      "options": {
+        "mode": "throttle",
+        "interval": "minute",
+        "capacity": "60",
+        "events_per_run": 1
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null
+    },
+    {
+      "type": "Agents::HTTPRequestAgent",
+      "name": "List Projects",
+      "disabled": false,
+      "description": "",
+      "guid": "8938547727d57ece053463406a9ed489",
+      "origin_story_identifier": "cloud:98bf19cf1391e1805daf0cbdc3239e4a:f707c10fdc774774d84bd3e83c742d84",
+      "options": {
+        "url": "https://sonarcloud.io/api/projects/search",
+        "method": "get",
+        "payload": {
+          "organization": "tyler-tee"
+        },
+        "headers": {
+          "Authorization": "Bearer <<CREDENTIAL.sonarcloud_token>>"
+        }
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": [
+        {
+          "cron": "0 0 * * *",
+          "timezone": "America/New_York"
+        }
+      ]
+    },
+    {
+      "type": "Agents::EventTransformationAgent",
+      "name": "Explode Projects",
+      "disabled": false,
+      "description": null,
+      "guid": "5d97f80950047168e23fb547c9b1e1de",
+      "origin_story_identifier": "cloud:98bf19cf1391e1805daf0cbdc3239e4a:f707c10fdc774774d84bd3e83c742d84",
+      "options": {
+        "mode": "explode",
+        "path": "=list_projects.body.components",
+        "to": "project"
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::EventTransformationAgent",
+      "name": "Parse Source",
+      "disabled": false,
+      "description": null,
+      "guid": "1c5e15181cf8856999ef4db9b60bc00c",
+      "origin_story_identifier": "cloud:98bf19cf1391e1805daf0cbdc3239e4a:f707c10fdc774774d84bd3e83c742d84",
+      "options": {
+        "mode": "message_only",
+        "loop": false,
+        "payload": "=IF(IS_PRESENT(explode_projects.project),\n  {\"project_name\": explode_projects.project.name,\n  \"project_key\": explode_projects.project.key,\n  \"last_analyzed\": explode_projects.project.lastAnalysisDate},\n  {\"project_name\": receive_sonarcloud_events.body.project.name,\n   \"project_key\": receive_sonarcloud_events.body.project.key,\n  \"last_analyzed\": receive_sonarcloud_events.body.analysedAt})"
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::HTTPRequestAgent",
+      "name": "Create a JSON resource",
+      "disabled": false,
+      "description": "Creates a resource in Tines that has a JSON object or array of values.\n\nPlease note, for test resources that will be used in TEST mode of change control, the optional value 'Live Resource ID' must be used. In this scenario, the other optional values (i.e. resource description, read access, team ID, folder ID) will default to the specified live resource ID.\n\nLink to API documentation: https://www.tines.com/api/resources/create-json",
+      "guid": "83bfce50eb8da3224c72b231ba34dde6",
+      "origin_story_identifier": "cloud:98bf19cf1391e1805daf0cbdc3239e4a:f707c10fdc774774d84bd3e83c742d84",
+      "options": {
+        "url": "https://<<INPUT.tenant_domain>>/api/v1/global_resources",
+        "method": "post",
+        "headers": {
+          "Authorization": "Bearer <<INPUT.tines_credential>>"
+        },
+        "content_type": "application_json",
+        "local": {
+          "all_parameters": {
+            "name": "=INPUT.resource_name",
+            "team_id": "=INPUT.team_id",
+            "folder_id": "=INPUT.folder_id",
+            "read_access": "=DEFAULT(FORCE_ARRAY(INPUT.read_access)[0], \"TEAM\")",
+            "shared_team_slugs": "=IF(FORCE_ARRAY(INPUT.read_access)[0]= \"SPECIFIC_TEAMS\", SPLIT(DOWNCASE(REPLACE(INPUT.shared_team_names, \" \", \"_\")), \",\"), [])",
+            "description": "<<INPUT.description>>",
+            "live_resource_id": "=INPUT.live_resource_id",
+            "value": "=INPUT.resource_json_value"
+          },
+          "final_payload": "=REJECT(\n  LOCAL.all_parameters,\n  LAMBDA(\n    item,\n    OR(\n      item = NULL,\n      IF(\n        OR(\n          TYPE(item) = \"TrueClass\",\n          TYPE(item) = \"FalseClass\",\n          TYPE(item) = \"Integer\"\n        ),\n        IS_EMPTY(TEXT(item)),\n        IS_EMPTY(item)\n      )\n    )\n  )\n)"
+        },
+        "payload": "=LOCAL.final_payload"
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": "41a3c3f40794cf0c53e1520c7090efae62944a3b147b22efc63804fd7094c155",
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::EventTransformationAgent",
+      "name": "Get Scheduled Onboarding",
+      "disabled": false,
+      "description": null,
+      "guid": "0630c15abb67a64237edbb4b39590a0c",
+      "origin_story_identifier": "cloud:98bf19cf1391e1805daf0cbdc3239e4a:f707c10fdc774774d84bd3e83c742d84",
+      "options": {
+        "mode": "message_only",
+        "loop": false,
+        "payload": "=RESOURCE.sonarcloud_onboarding_schedule |>\nWHERE(%, \"onboarding_date\", TODAY())[0]"
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::HTTPRequestAgent",
+      "name": "Add Project w/o Automatic Analysis",
+      "disabled": false,
+      "description": "",
+      "guid": "658bbd53cc9d6570703e7e1dafe421b6",
+      "origin_story_identifier": "cloud:98bf19cf1391e1805daf0cbdc3239e4a:f707c10fdc774774d84bd3e83c742d84",
+      "options": {
+        "url": "https://sonarcloud.io/api/projects/create",
+        "method": "post",
+        "payload": {
+          "organization": "<<RESOURCE.sonarcloud_org>>",
+          "project": "<<RESOURCE.sonarcloud_org & \"_\" & get_scheduled_onboarding.project>>",
+          "name": "<<get_scheduled_onboarding.project>>"
+        },
+        "headers": {
+          "Authorization": "Bearer <<CREDENTIAL.sonarcloud_token>>"
+        }
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::TriggerAgent",
+      "name": "Onboarding Scheduled",
+      "disabled": false,
+      "description": null,
+      "guid": "9e68dad50fbc9ee470896e6f3ea6ac7d",
+      "origin_story_identifier": "cloud:98bf19cf1391e1805daf0cbdc3239e4a:f707c10fdc774774d84bd3e83c742d84",
+      "options": {
+        "rules": [
+          {
+            "path": "=get_scheduled_onboarding |> IS_PRESENT(%)",
+            "type": "formula"
+          }
+        ]
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null
+    },
+    {
+      "type": "Agents::HTTPRequestAgent",
+      "name": "Get Github Repo ID",
+      "disabled": false,
+      "description": "Created from cURL command",
+      "guid": "efa84241b8f3e191ebb23c4bd5cda2b6",
+      "origin_story_identifier": "cloud:98bf19cf1391e1805daf0cbdc3239e4a:f707c10fdc774774d84bd3e83c742d84",
+      "options": {
+        "url": "https://api.github.com/repos/<<RESOURCE.github_owner>>/<<explode_repos.repo>>",
+        "method": "get",
+        "headers": {
+          "Authorization": "Bearer <<CREDENTIAL.github_pat>>",
+          "Accept": "application/vnd.github.v3+json"
+        }
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::EventTransformationAgent",
+      "name": "Explode Repos",
+      "disabled": false,
+      "description": null,
+      "guid": "a9c6e185de99d502e7ee1d818df6bbbd",
+      "origin_story_identifier": "cloud:98bf19cf1391e1805daf0cbdc3239e4a:f707c10fdc774774d84bd3e83c742d84",
+      "options": {
+        "mode": "explode",
+        "path": "=compare_lists.remaining_repos",
+        "to": "repo"
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::HTTPRequestAgent",
+      "name": "Onboard with Automatic Analysis",
+      "disabled": false,
+      "description": "Created from cURL command",
+      "guid": "845d938dd10557fc61e73ec207433af4",
+      "origin_story_identifier": "cloud:98bf19cf1391e1805daf0cbdc3239e4a:f707c10fdc774774d84bd3e83c742d84",
+      "options": {
+        "url": "https://sonarcloud.io/api/alm_integration/provision_projects",
+        "method": "post",
+        "content_type": "form",
+        "payload": {
+          "installationKeys": "<<RESOURCE.sonarcloud_org>>/<<get_scheduled_onboarding.project>>|<<get_scheduled_onboarding.repo_id>>",
+          "organization": "<<RESOURCE.sonarcloud_org>>"
+        },
+        "headers": {
+          "Authorization": "Bearer <<CREDENTIAL.sonarcloud_token>>"
+        }
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::EventTransformationAgent",
+      "name": "Implode Repo IDs",
+      "disabled": false,
+      "description": null,
+      "guid": "8335af798817db5a43ad1a09ca8186fc",
+      "origin_story_identifier": "cloud:98bf19cf1391e1805daf0cbdc3239e4a:f707c10fdc774774d84bd3e83c742d84",
+      "options": {
+        "mode": "implode",
+        "item_path": "={\"project\": explode_repos.repo,\n \"repo_id\": get_github_repo_id.body.id}",
+        "guid_path": "=explode_repos.guid",
+        "size_path": "=explode_repos.size"
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::TriggerAgent",
+      "name": "Successful Onboarding",
+      "disabled": false,
+      "description": null,
+      "guid": "818140acd891fe4659797dd954c10281",
+      "origin_story_identifier": "cloud:98bf19cf1391e1805daf0cbdc3239e4a:f707c10fdc774774d84bd3e83c742d84",
+      "options": {
+        "rules": [
+          {
+            "type": "field==value",
+            "value": "200",
+            "path": "<<onboard_with_automatic_analysis.status>>"
+          }
+        ]
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null
+    },
+    {
+      "type": "Agents::HTTPRequestAgent",
+      "name": "Get Repo README",
+      "disabled": false,
+      "description": null,
+      "guid": "1b44e70accacdb15bd31409cfb9e7665",
+      "origin_story_identifier": "cloud:98bf19cf1391e1805daf0cbdc3239e4a:f707c10fdc774774d84bd3e83c742d84",
+      "options": {
+        "url": "https://api.github.com/repos/<<RESOURCE.github_owner>>/<<get_scheduled_onboarding.project>>/readme",
+        "method": "get"
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::EventTransformationAgent",
+      "name": "Decode README",
+      "disabled": false,
+      "description": null,
+      "guid": "97500d415183d290ef9e2d3b033777aa",
+      "origin_story_identifier": "cloud:98bf19cf1391e1805daf0cbdc3239e4a:f707c10fdc774774d84bd3e83c742d84",
+      "options": {
+        "mode": "message_only",
+        "loop": false,
+        "payload": "=BASE64_DECODE(get_repo_readme.body.content)"
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::EventTransformationAgent",
+      "name": "Inject SonarCloud Badge",
+      "disabled": false,
+      "description": null,
+      "guid": "d5164a2b3f26c64b2aa8d0ec272e9d1e",
+      "origin_story_identifier": "cloud:98bf19cf1391e1805daf0cbdc3239e4a:f707c10fdc774774d84bd3e83c742d84",
+      "options": {
+        "mode": "message_only",
+        "loop": false,
+        "payload": "=decode_readme |>\nREPLACE_FIRST(%, \"\\n\", \"\\n\\n\" & LOCAL.sonarcloud_badge & \"\\n\\n\")",
+        "local": {
+          "sonarcloud_badge": "![SonarCloud Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=<<RESOURCE.sonarcloud_org & \"_\" & get_scheduled_onboarding.project>>&metric=alert_status)"
+        }
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::HTTPRequestAgent",
+      "name": "Update README",
+      "disabled": false,
+      "description": "",
+      "guid": "a1b334b133833afea3815f1e0260ae13",
+      "origin_story_identifier": "cloud:98bf19cf1391e1805daf0cbdc3239e4a:f707c10fdc774774d84bd3e83c742d84",
+      "options": {
+        "url": "https://api.github.com/repos/<<RESOURCE.github_owner>>/<<get_scheduled_onboarding.project>>/contents/<<get_repo_readme.body.path>>",
+        "method": "put",
+        "content_type": "application_json",
+        "payload": {
+          "message": "Add SonarCloud Quality Gate badge",
+          "content": "<<inject_sonarcloud_badge |> BASE64_ENCODE(%)>>",
+          "sha": "<<get_repo_readme.body.sha>>"
+        },
+        "headers": {
+          "Authorization": "Bearer <<CREDENTIAL.github_pat>>",
+          "Accept": "application/vnd.github.v3+json"
+        }
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    }
+  ],
+  "diagram_notes": [
+    {
+      "content": "# Event-Driven Updates",
+      "position": [
+        210,
+        75
+      ],
+      "guid": "286ddaab7d8d5ff6367c7cf4201490f0",
+      "width": 209
+    },
+    {
+      "content": "# Scheduled Updates",
+      "position": [
+        495,
+        75
+      ],
+      "guid": "36a1cae4248e147199837f5d3875a42f",
+      "width": 180
+    },
+    {
+      "content": "# Staged Onboarding\nFlow designed to gather available repo's and stage their SonarCloud onboarding.\n\nThis allows developers time to review each incoming project and attempt to resolve/plan out issue resolution.",
+      "position": [
+        -1155,
+        -30
+      ],
+      "guid": "d92833223cd98d161a60fd042bc70e82",
+      "width": 270
+    },
+    {
+      "content": "Gather all public repos from Github and compare them with projects in SonarCloud.",
+      "position": [
+        -1395,
+        180
+      ],
+      "guid": "af076553bc67477c94a5a51879b350c4",
+      "width": 270
+    },
+    {
+      "content": "Get all repo ID's for Github repos (necessary for onboarding with automatic analysis).",
+      "position": [
+        -1395,
+        600
+      ],
+      "guid": "c35f60251f7db9e25e9a87a4b6a3d9d8",
+      "width": 270
+    },
+    {
+      "content": "Loop over project objects and stage their onboarding date.\n\nBy default, this spaces out project onboarding one day at a time.",
+      "position": [
+        -1395,
+        840
+      ],
+      "guid": "5642e11a38818ba8b1bc3cc7f4c77649",
+      "width": 270
+    },
+    {
+      "content": "# Onboard Scheduled Projects\nCheck for scheduled projects and attempt to onboard them.\n\nBy default, automatic analysis application is attempted - If this isn't possible (due to supported language, for example) it'll just add the project to SonarCloud and leave the dev responsible for configuring analysis.",
+      "position": [
+        -810,
+        -75
+      ],
+      "guid": "58ddc2aba4374fcaebfbc44899d0c9cd",
+      "width": 270
+    },
+    {
+      "content": "Update the repo's README to include the SonarCloud Gate Quality badge.",
+      "position": [
+        -600,
+        855
+      ],
+      "guid": "5d7891ee41e37e082a2927a4fc9fc92f",
+      "width": 270
+    }
+  ],
+  "links": [
+    {
+      "source": 0,
+      "receiver": 1
+    },
+    {
+      "source": 1,
+      "receiver": 22
+    },
+    {
+      "source": 2,
+      "receiver": 4
+    },
+    {
+      "source": 4,
+      "receiver": 19
+    },
+    {
+      "source": 5,
+      "receiver": 6
+    },
+    {
+      "source": 6,
+      "receiver": 8
+    },
+    {
+      "source": 6,
+      "receiver": 11
+    },
+    {
+      "source": 7,
+      "receiver": 9
+    },
+    {
+      "source": 8,
+      "receiver": 7
+    },
+    {
+      "source": 9,
+      "receiver": 10
+    },
+    {
+      "source": 11,
+      "receiver": 14
+    },
+    {
+      "source": 13,
+      "receiver": 12
+    },
+    {
+      "source": 14,
+      "receiver": 13
+    },
+    {
+      "source": 15,
+      "receiver": 16
+    },
+    {
+      "source": 16,
+      "receiver": 17
+    },
+    {
+      "source": 17,
+      "receiver": 28
+    },
+    {
+      "source": 18,
+      "receiver": 23
+    },
+    {
+      "source": 19,
+      "receiver": 3
+    },
+    {
+      "source": 20,
+      "receiver": 21
+    },
+    {
+      "source": 21,
+      "receiver": 22
+    },
+    {
+      "source": 22,
+      "receiver": 5
+    },
+    {
+      "source": 22,
+      "receiver": 2
+    },
+    {
+      "source": 24,
+      "receiver": 26
+    },
+    {
+      "source": 25,
+      "receiver": 32
+    },
+    {
+      "source": 26,
+      "receiver": 29
+    },
+    {
+      "source": 27,
+      "receiver": 30
+    },
+    {
+      "source": 28,
+      "receiver": 27
+    },
+    {
+      "source": 29,
+      "receiver": 31
+    },
+    {
+      "source": 30,
+      "receiver": 18
+    },
+    {
+      "source": 31,
+      "receiver": 32
+    },
+    {
+      "source": 31,
+      "receiver": 25,
+      "link_type": "secondary"
+    },
+    {
+      "source": 32,
+      "receiver": 33
+    },
+    {
+      "source": 33,
+      "receiver": 34
+    },
+    {
+      "source": 34,
+      "receiver": 35
+    }
+  ],
+  "diagram_layout": "{\"c3ac923c97d08ccab96c3e5dd149a12c\":[210,135],\"54e3d40625fd89499627a7cce0a63e85\":[210,255],\"861d9ef50de653f8005a319b53954d46\":[510,525],\"7523d2b540be8caf14af0624c3ad61a4\":[510,885],\"c30150b04bf695173adcf4672898f28c\":[510,645],\"a0c2ee27802ecfc2fb9edae2d52bd571\":[210,525],\"0eddd229ceff4bd81597bc9c41585a6c\":[210,645],\"cc81a3b5808817420b3fc75d2683d92d\":[210,885],\"8b70b0d88995adfb9ab81a285bc8abde\":[210,765],\"341e5be80faf1548f494aad672c7c969\":[210,1005],\"c315bb9a1ddce1f3dc4ae17f55da142d\":[210,1125],\"01ac066cbc460835143e3f397764b9ba\":[-60,765],\"68b832c0777a1c1c38c94d419cc1f4d4\":[-60,1125],\"75f99501407195f98d8b9f4d857979cb\":[-60,1005],\"c3cea0afb4bd042d402e7ad506df0d22\":[-60,885],\"01ce08d690b1a34582a2f320c5b07729\":[-1110,135],\"e413508cc650b6de5336f84788723a3a\":[-1110,255],\"81aeb50a857bc5f270165fd1dcd446e4\":[-1110,375],\"e56b1bc6f91148a76724e80cf8c94fda\":[-1110,855],\"770b74d30f6ed6eb599c9e996dd7c598\":[510,765],\"8938547727d57ece053463406a9ed489\":[495,135],\"5d97f80950047168e23fb547c9b1e1de\":[495,255],\"1c5e15181cf8856999ef4db9b60bc00c\":[210,390],\"83bfce50eb8da3224c72b231ba34dde6\":[-1110,975],\"0630c15abb67a64237edbb4b39590a0c\":[-810,135],\"658bbd53cc9d6570703e7e1dafe421b6\":[-690,600],\"9e68dad50fbc9ee470896e6f3ea6ac7d\":[-810,255],\"efa84241b8f3e191ebb23c4bd5cda2b6\":[-1110,615],\"a9c6e185de99d502e7ee1d818df6bbbd\":[-1110,495],\"845d938dd10557fc61e73ec207433af4\":[-810,375],\"8335af798817db5a43ad1a09ca8186fc\":[-1110,735],\"818140acd891fe4659797dd954c10281\":[-810,495],\"1b44e70accacdb15bd31409cfb9e7665\":[-810,735],\"97500d415183d290ef9e2d3b033777aa\":[-810,855],\"d5164a2b3f26c64b2aa8d0ec272e9d1e\":[-810,975],\"a1b334b133833afea3815f1e0260ae13\":[-810,1095]}",
+  "send_to_story_enabled": false,
+  "entry_agent_guid": null,
+  "exit_agent_guids": [],
+  "exit_agent_guid": null,
+  "api_entry_action_guids": [],
+  "api_exit_action_guids": [],
+  "keep_events_for": 604800,
+  "reporting_status": true,
+  "send_to_story_access": null,
+  "story_library_metadata": {},
+  "parent_only_send_to_story": false,
+  "monitor_failures": false,
+  "send_to_stories": [],
+  "synchronous_webhooks_enabled": false,
+  "send_to_story_access_source": 0,
+  "send_to_story_skill_use_requires_confirmation": true,
+  "pages": [],
+  "tags": [],
+  "time_saved_unit": "minutes",
+  "time_saved_value": 0,
+  "origin_story_identifier": "cloud:98bf19cf1391e1805daf0cbdc3239e4a:f707c10fdc774774d84bd3e83c742d84",
+  "integration_product": null,
+  "integration_vendor": null,
+  "llm_product_instructions": "",
+  "exported_at": "2024-11-24T15:22:00Z",
+  "icon": ":github:",
+  "integrations": [
+    {
+      "action_inputs": [
+        {
+          "name": "Tenant domain",
+          "description": "The domain of the tenant.",
+          "required": true,
+          "type": "TEXT",
+          "ranking": 0,
+          "value": "\"<<META.tenant.domain>>\"",
+          "options": [
+            "Option 1",
+            "Option 2"
+          ],
+          "is_collapsed": false,
+          "sub_type": "HTML",
+          "multi_select_enabled": false,
+          "llm_json_schema": "{}"
+        },
+        {
+          "name": "Tines credential",
+          "description": "",
+          "required": false,
+          "type": "CREDENTIAL",
+          "ranking": 1073741824,
+          "value": "\"=CREDENTIAL.tines_token\"",
+          "options": [
+            "Option 1",
+            "Option 2"
+          ],
+          "is_collapsed": false,
+          "sub_type": "HTML",
+          "multi_select_enabled": false,
+          "llm_json_schema": "{}"
+        },
+        {
+          "name": "Resource name",
+          "description": "Name of the resource.",
+          "required": true,
+          "type": "TEXT",
+          "ranking": 1610612736,
+          "value": "\"sonarcloud_onboarding_schedule\"",
+          "options": [
+            "Option 1",
+            "Option 2"
+          ],
+          "is_collapsed": false,
+          "sub_type": "HTML",
+          "multi_select_enabled": false,
+          "llm_json_schema": "{}"
+        },
+        {
+          "name": "Folder ID",
+          "description": "ID of the folder where the resource will be located. You can identify the folder ID within the URL of your Tines tenant on the tenant overview page by selecting an item within the folder.",
+          "required": false,
+          "type": "NUMBER",
+          "ranking": 1879048192,
+          "value": "\"\"",
+          "options": [
+            "Option 1",
+            "Option 2"
+          ],
+          "is_collapsed": true,
+          "sub_type": "HTML",
+          "multi_select_enabled": false,
+          "llm_json_schema": "{}"
+        },
+        {
+          "name": "Read access",
+          "description": "Control where this resource can be used. Defaults to 'team'. The 'specific teams' option is a premium feature that may not be available in your tenant and if used requires the additional parameter 'Shared team names'.",
+          "required": false,
+          "type": "OPTION",
+          "ranking": 2013265920,
+          "value": "\"\"",
+          "options": [
+            "TEAM",
+            "GLOBAL",
+            "SPECIFIC_TEAMS"
+          ],
+          "is_collapsed": true,
+          "sub_type": "HTML",
+          "multi_select_enabled": false,
+          "llm_json_schema": "{}"
+        },
+        {
+          "name": "Shared team names",
+          "description": "Comma separated list of teams' names where this resource can be used. Required to set 'read access' parameter to 'SPECIFIC_TEAMS'.",
+          "required": false,
+          "type": "TEXT",
+          "ranking": 2080374784,
+          "value": "\"\"",
+          "options": [
+            "Option 1",
+            "Option 2"
+          ],
+          "is_collapsed": true,
+          "sub_type": "HTML",
+          "multi_select_enabled": false,
+          "llm_json_schema": "{}"
+        },
+        {
+          "name": "Description",
+          "description": "Description of the resource.",
+          "required": false,
+          "type": "TEXT",
+          "ranking": 2113929216,
+          "value": "\"\"",
+          "options": [
+            "Option 1",
+            "Option 2"
+          ],
+          "is_collapsed": true,
+          "sub_type": "HTML",
+          "multi_select_enabled": false,
+          "llm_json_schema": "{}"
+        },
+        {
+          "name": "Resource JSON value",
+          "description": "The value of the resource. This can be an object with key/value pairs or an array of values.",
+          "required": true,
+          "type": "OBJECT",
+          "ranking": 2130706432,
+          "value": "\"=schedule_onboarding\"",
+          "options": [
+            "Option 1",
+            "Option 2"
+          ],
+          "is_collapsed": false,
+          "sub_type": "HTML",
+          "multi_select_enabled": false,
+          "llm_json_schema": "{}"
+        },
+        {
+          "name": "Live resource ID",
+          "description": "If creating a test resource for change control TEST mode, specify the ID of the corresponding live resource.",
+          "required": false,
+          "type": "NUMBER",
+          "ranking": 2139095040,
+          "value": "\"\"",
+          "options": [
+            "Option 1",
+            "Option 2"
+          ],
+          "is_collapsed": true,
+          "sub_type": "HTML",
+          "multi_select_enabled": false,
+          "llm_json_schema": "{}"
+        },
+        {
+          "name": "Team ID",
+          "description": "ID of Tines Team where the resource will be located. You can identify the team ID within the URL of your Tines tenant on the tenant overview page by selecting an item within the team.",
+          "required": false,
+          "type": "NUMBER",
+          "ranking": 2143289344,
+          "value": "\"=META.team.id\"",
+          "options": [
+            "Option 1",
+            "Option 2"
+          ],
+          "is_collapsed": false,
+          "sub_type": "HTML",
+          "multi_select_enabled": false,
+          "llm_json_schema": "{}"
+        }
+      ],
+      "action_guid": "83bfce50eb8da3224c72b231ba34dde6",
+      "product": "Tines"
+    }
+  ]
+}
